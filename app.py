@@ -16,3 +16,7 @@ if "user_id" not in st.session_state:
         signup_form()
 else:
     show_dashboard()
+
+from db import init_db
+init_db()
+
