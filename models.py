@@ -34,3 +34,11 @@ class Transaction(Base):
     action = Column(String)  # 'buy' or 'sell'
     quantity = Column(Integer)
     total_price = Column(Integer)
+
+class Listing(Base):
+    __tablename__ = 'listings'
+    id = Column(String, primary_key=True)
+    seller_id = Column(String, ForeignKey('users.id'))
+    item_id = Column(String, ForeignKey('items.id'))
+    quantity = Column(Integer)
+    price = Column(Integer)  # price per unit
