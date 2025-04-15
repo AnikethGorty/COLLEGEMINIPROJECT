@@ -1,70 +1,68 @@
-#dashboard.py
 import streamlit as st
-from db import *
-from models import session, Item
-
+from db import (
+    get_user_by_id, get_all_items, buy_item, sell_item,
+    get_user_items, create_item, make_admin, get_all_users,
+    clear_database
+)
 
 def show_dashboard():
-    user = get_user(st.session_state["user_id"])
-    st.title(f"Welcome to TradeZone, {user.email}")
-    st.write(f"You have {user.coins} coins")
+    user_id = st.session_state["user_id"]
+    user = get_user_by_id(user_id)
 
-    st.markdown("### Your Inventory")
-    inventory = get_inventory(user.id)
-    for inv in inventory:
-        item = session.query(Item).filter_by(id=inv.item_id).first()
-        st.write(f"{item.name}: {inv.quantity}")
-        qty_sell = st.number_input(f"Sell how many of {item.name}", 0, inv.quantity, key=f"sell_{item.id}")
-        price_sell = st.number_input(f"Sell price per unit", 1, key=f"price_{item.id}")
-        if st.button(f"List {item.name} on marketplace", key=f"list_{item.id}"):
-            list_item_for_sale(user.id, item.id, qty_sell, price_sell)
-            update_inventory(user.id, item.id, -qty_sell)
-            session.commit()
-            st.success(f"Listed {qty_sell} x {item.name} at {price_sell} coins each")
-            st.rerun()
+    st.sidebar.title("Account")
+    st.sidebar.write(f"Logged in as: `{user.email}`")
+    st.sidebar.write(f"Balance: 💰 {user.balance} coins")
 
-    if user.is_admin:
-        st.markdown("## 🛠️ Admin Panel")
-        with st.expander("Promote User to Admin"):
-            email_to_promote = st.text_input("User email")
-            if st.button("Make Admin"):
-                if promote_user_to_admin(email_to_promote):
-                    st.success("User promoted!")
-                else:
-                    st.error("User not found")
-        with st.expander("Create New Item"):
-            new_name = st.text_input("Item name")
-            new_price = st.number_input("Item price", min_value=1)
-            if st.button("Add Item"):
-                create_item(new_name, new_price)
-                st.success(f"Created item: {new_name}")
-                st.rerun()
-
-    st.markdown("### 🌍 Public Marketplace")
-    listings = get_listings()
-    if listings:
-        for listing in listings:
-            item = session.query(Item).filter_by(id=listing.item_id).first()
-            seller = get_user(listing.seller_id)
-            st.write(f"**{item.name}** (Qty: {listing.quantity}, Price: {listing.price} coins each) — Seller: {seller.email}")
-            qty_buy = st.number_input(f"Buy how many of {item.name}", 1, listing.quantity, key=f"mp_{listing.id}")
-            if st.button(f"Buy from {seller.email}", key=f"buy_listing_{listing.id}"):
-                total_price = qty_buy * listing.price
-                if user.coins >= total_price:
-                    user.coins -= total_price
-                    seller.coins += total_price
-                    update_inventory(user.id, item.id, qty_buy)
-                    listing.quantity -= qty_buy
-                    if listing.quantity <= 0:
-                        delete_listing(listing)
-                    session.commit()
-                    st.success(f"Bought {qty_buy} x {item.name}")
-                    st.rerun()
-                else:
-                    st.error("Not enough coins!")
-    else:
-        st.write("No public listings available.")
-
-    if st.button("Logout"):
+    if st.sidebar.button("Logout"):
         st.session_state.clear()
         st.rerun()
+
+    st.title("🛒 TradeZone Marketplace")
+    st.subheader("Available Items")
+    items = get_all_items()
+
+    for item in items:
+        col1, col2, col3, col4 = st.columns(4)
+        col1.write(f"**{item.name}**")
+        col2.write(f"💰 Price: {item.price}")
+        col3.write(f"📦 Stock: {item.quantity}")
+        if col4.button("Buy", key=f"buy_{item.id}"):
+            buy_item(user.id, item.id)
+
+    st.subheader("📦 Your Inventory")
+    inventory = get_user_items(user.id)
+    for entry in inventory:
+        item = entry.item
+        col1, col2, col3 = st.columns(3)
+        col1.write(f"**{item.name}**")
+        col2.write(f"Qty: {entry.quantity}")
+        if col3.button("Sell", key=f"sell_{entry.id}"):
+            sell_item(user.id, item.id)
+
+    if user.is_admin:
+        st.subheader("🛠 Admin Panel")
+
+        st.markdown("### ➕ Add New Item")
+        name = st.text_input("Item Name")
+        price = st.number_input("Item Price", min_value=1)
+        quantity = st.number_input("Item Quantity", min_value=1)
+        if st.button("Create Item"):
+            create_item(name, price, quantity)
+            st.success("Item created!")
+            st.rerun()
+
+        st.markdown("### 👑 Promote User to Admin")
+        users = get_all_users()
+        target = st.selectbox("Select User", [u.email for u in users if not u.is_admin])
+        if st.button("Make Admin"):
+            user_obj = next((u for u in users if u.email == target), None)
+            if user_obj:
+                make_admin(user_obj.id)
+                st.success(f"{target} is now an admin.")
+                st.rerun()
+
+        st.markdown("### ❌ Danger Zone")
+        if st.button("Clear Database"):
+            clear_database()
+            st.success("Database cleared!")
+            st.rerun()
