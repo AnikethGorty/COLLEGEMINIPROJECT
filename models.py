@@ -11,6 +11,7 @@ class User(Base):
     email = Column(String, unique=True)
     password = Column(String)
     coins = Column(Integer, default=1000)
+    is_admin = Column(Integer, default=0)  # 0 = no, 1 = yes
 
 class Item(Base):
     __tablename__ = 'items'
