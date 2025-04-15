@@ -5,6 +5,8 @@ from dashboard import show_dashboard
 
 st.set_page_config(page_title="TradeZone", layout="wide")
 
+ensure_default_admin()
+
 menu = ["Login", "Sign Up"]
 choice = st.sidebar.selectbox("Menu", menu)
 
