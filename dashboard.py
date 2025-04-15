@@ -1,6 +1,7 @@
 # dashboard.py
+from db import promote_user_to_admin, create_item, list_item_for_sale, get_listings, get_listing_by_id, delete_listing, get_items, get_user, update_inventory, record_transaction, get_inventory, session
+
 import streamlit as st
-from db import get_items, get_user, update_inventory, record_transaction, get_inventory, session
 
 def show_dashboard():
     st.subheader("Welcome to the Trading Zone!")
@@ -41,3 +42,8 @@ def show_dashboard():
                 session.commit()
                 st.success(f"Sold {qty_sell} x {item.name}")
                 st.rerun()
+     # Logout Button
+    if st.button("Logout"):
+        st.session_state.clear()
+        st.rerun()
+
