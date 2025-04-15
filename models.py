@@ -1,42 +1,30 @@
-#models.py
-import uuid
-from sqlalchemy import Column, String, Integer, ForeignKey, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Column, String, Integer, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
     id = Column(String, primary_key=True)
     tenant_id = Column(String)
     email = Column(String, unique=True)
     password = Column(String)
-    coins = Column(Integer, default=1000)
-    is_admin = Column(Integer, default=0)
+    balance = Column(Integer, default=1000)
+    is_admin = Column(Boolean, default=False)
 
 class Item(Base):
-    __tablename__ = 'items'
-    id = Column(String, primary_key=True)
+    __tablename__ = "items"
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String)
     price = Column(Integer)
-
-class Inventory(Base):
-    __tablename__ = 'inventory'
-    id = Column(String, primary_key=True)
-    user_id = Column(String, ForeignKey('users.id'))
-    item_id = Column(String, ForeignKey('items.id'))
     quantity = Column(Integer)
 
-class Listing(Base):
-    __tablename__ = 'listings'
-    id = Column(String, primary_key=True)
-    seller_id = Column(String, ForeignKey('users.id'))
-    item_id = Column(String, ForeignKey('items.id'))
+class InventoryEntry(Base):
+    __tablename__ = "inventory"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id"))
+    item_id = Column(Integer, ForeignKey("items.id"))
     quantity = Column(Integer)
-    price = Column(Integer)
 
-engine = create_engine('sqlite:///tradezone.db')
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
-session = Session()
+    item = relationship("Item")
