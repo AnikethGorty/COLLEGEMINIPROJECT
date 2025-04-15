@@ -54,3 +54,17 @@ def get_listing_by_id(listing_id):
 def delete_listing(listing):
     session.delete(listing)
     session.commit()
+
+def ensure_default_admin():
+    admin = get_user_by_email("admin")
+    if not admin:
+        admin_user = User(
+            id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            email="admin",
+            password="admin",
+            coins=1000,
+            is_admin=1
+        )
+        session.add(admin_user)
+        session.commit()
