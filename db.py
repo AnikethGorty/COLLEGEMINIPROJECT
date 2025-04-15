@@ -1,6 +1,6 @@
 from models import Base, User, Item, InventoryEntry
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker,joinedload
 
 engine = create_engine("sqlite:///tradezone.db")
 Base.metadata.create_all(engine)
@@ -83,7 +83,7 @@ def sell_item(user_id, item_id):
 
 def get_user_items(user_id):
     session = Session()
-    entries = session.query(InventoryEntry).filter_by(user_id=user_id).all()
+    entries = session.query(InventoryEntry).options(joinedload(InventoryEntry.item)).filter_by(user_id=user_id).all()
     session.close()
     return entries
 
