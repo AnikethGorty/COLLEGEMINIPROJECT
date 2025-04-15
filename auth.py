@@ -13,7 +13,7 @@ def login_form():
             st.session_state["user_id"] = user.id
             st.session_state["tenant_id"] = user.tenant_id
             st.success("Logged in successfully!")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Invalid email or password")
 
@@ -31,4 +31,4 @@ def signup_form():
             st.session_state["user_id"] = user_id
             st.session_state["tenant_id"] = tenant_id
             st.success("Account created and logged in!")
-            st.experimental_rerun()
+            st.rerun()
