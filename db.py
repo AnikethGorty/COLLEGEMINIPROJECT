@@ -61,3 +61,35 @@ def record_transaction(user_id, item_id, action, quantity, total_price):
     )
     session.add(txn)
     session.commit()
+
+def promote_user_to_admin(email):
+    user = get_user_by_email(email)
+    if user:
+        user.is_admin = 1
+        session.commit()
+        return True
+    return False
+
+def create_item(name, price):
+    from models import Item
+    item = Item(id=str(uuid.uuid4()), name=name, price=price)
+    session.add(item)
+    session.commit()
+
+def list_item_for_sale(seller_id, item_id, quantity, price):
+    listing = Listing(
+        id=str(uuid.uuid4()), seller_id=seller_id,
+        item_id=item_id, quantity=quantity, price=price
+    )
+    session.add(listing)
+    session.commit()
+
+def get_listings():
+    return session.query(Listing).all()
+
+def get_listing_by_id(listing_id):
+    return session.query(Listing).filter_by(id=listing_id).first()
+
+def delete_listing(listing):
+    session.delete(listing)
+    session.commit()
