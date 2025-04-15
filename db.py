@@ -1,70 +1,111 @@
-#db.py
-from models import *
+from models import Base, User, Item, InventoryEntry
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-def create_user(email, password):
-    if get_user_by_email(email):
-        return None, None
-    user = User(id=str(uuid.uuid4()), tenant_id=str(uuid.uuid4()), email=email, password=password)
-    session.add(user)
-    session.commit()
-    return user.id, user.tenant_id
-
-def get_user_by_email(email):
-    return session.query(User).filter_by(email=email).first()
-
-def get_user(user_id):
-    return session.query(User).filter_by(id=user_id).first()
-
-def get_inventory(user_id):
-    return session.query(Inventory).filter_by(user_id=user_id).all()
-
-def update_inventory(user_id, item_id, quantity):
-    inv = session.query(Inventory).filter_by(user_id=user_id, item_id=item_id).first()
-    if inv:
-        inv.quantity += quantity
-    else:
-        inv = Inventory(id=str(uuid.uuid4()), user_id=user_id, item_id=item_id, quantity=quantity)
-        session.add(inv)
-    session.commit()
-
-def promote_user_to_admin(email):
-    user = get_user_by_email(email)
-    if user:
-        user.is_admin = 1
-        session.commit()
-        return True
-    return False
-
-def create_item(name, price):
-    item = Item(id=str(uuid.uuid4()), name=name, price=price)
-    session.add(item)
-    session.commit()
-
-def list_item_for_sale(seller_id, item_id, quantity, price):
-    listing = Listing(id=str(uuid.uuid4()), seller_id=seller_id, item_id=item_id, quantity=quantity, price=price)
-    session.add(listing)
-    session.commit()
-
-def get_listings():
-    return session.query(Listing).all()
-
-def get_listing_by_id(listing_id):
-    return session.query(Listing).filter_by(id=listing_id).first()
-
-def delete_listing(listing):
-    session.delete(listing)
-    session.commit()
+engine = create_engine("sqlite:///tradezone.db")
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
 
 def ensure_default_admin():
-    admin = get_user_by_email("admin")
-    if not admin:
-        admin_user = User(
-            id=str(uuid.uuid4()),
-            tenant_id=str(uuid.uuid4()),
-            email="admin",
-            password="admin",
-            coins=1000,
-            is_admin=1
-        )
-        session.add(admin_user)
+    session = Session()
+    if not session.query(User).filter_by(email="admin").first():
+        admin = User(id="admin", tenant_id="admin-tenant", email="admin", password="admin", balance=1000, is_admin=True)
+        session.add(admin)
         session.commit()
+    session.close()
+
+def get_user_by_email(email):
+    session = Session()
+    user = session.query(User).filter_by(email=email).first()
+    session.close()
+    return user
+
+def get_user_by_id(user_id):
+    session = Session()
+    user = session.query(User).get(user_id)
+    session.close()
+    return user
+
+def create_user(user_id, tenant_id, email, password):
+    session = Session()
+    user = User(id=user_id, tenant_id=tenant_id, email=email, password=password, balance=1000, is_admin=False)
+    session.add(user)
+    session.commit()
+    session.close()
+
+def get_all_items():
+    session = Session()
+    items = session.query(Item).filter(Item.quantity > 0).all()
+    session.close()
+    return items
+
+def create_item(name, price, quantity):
+    session = Session()
+    item = Item(name=name, price=price, quantity=quantity)
+    session.add(item)
+    session.commit()
+    session.close()
+
+def buy_item(user_id, item_id):
+    session = Session()
+    user = session.query(User).get(user_id)
+    item = session.query(Item).get(item_id)
+
+    if item.quantity > 0 and user.balance >= item.price:
+        user.balance -= item.price
+        item.quantity -= 1
+
+        entry = session.query(InventoryEntry).filter_by(user_id=user_id, item_id=item_id).first()
+        if entry:
+            entry.quantity += 1
+        else:
+            session.add(InventoryEntry(user_id=user_id, item_id=item_id, quantity=1))
+
+        session.commit()
+    session.close()
+
+def sell_item(user_id, item_id):
+    session = Session()
+    user = session.query(User).get(user_id)
+    item = session.query(Item).get(item_id)
+
+    entry = session.query(InventoryEntry).filter_by(user_id=user_id, item_id=item_id).first()
+    if entry and entry.quantity > 0:
+        entry.quantity -= 1
+        user.balance += item.price
+        item.quantity += 1
+
+        if entry.quantity == 0:
+            session.delete(entry)
+
+        session.commit()
+    session.close()
+
+def get_user_items(user_id):
+    session = Session()
+    entries = session.query(InventoryEntry).filter_by(user_id=user_id).all()
+    session.close()
+    return entries
+
+def make_admin(user_id):
+    session = Session()
+    user = session.query(User).get(user_id)
+    user.is_admin = True
+    session.commit()
+    session.close()
+
+def get_all_users():
+    session = Session()
+    users = session.query(User).all()
+    session.close()
+    return users
+
+def clear_database():
+    session = Session()
+    session.query(InventoryEntry).delete()
+    session.query(Item).delete()
+    session.query(User).filter(User.email != "admin").delete()
+    admin = session.query(User).filter_by(email="admin").first()
+    admin.balance = 1000
+    session.commit()
+    session.close()
