@@ -23,7 +23,7 @@ def show_dashboard():
                     record_transaction(user.id, item.id, "buy", quantity, total)
                     session.commit()
                     st.success(f"Bought {quantity} x {item.name}")
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("Not enough coins!")
 
@@ -40,4 +40,4 @@ def show_dashboard():
                 record_transaction(user.id, item.id, "sell", qty_sell, total)
                 session.commit()
                 st.success(f"Sold {qty_sell} x {item.name}")
-                st.experimental_rerun()
+                st.rerun()
