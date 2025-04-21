@@ -53,18 +53,21 @@ def buy_item(user_id, item_id):
         item = session.query(Item).get(item_id)
 
         if item and user and item.quantity > 0 and user.balance >= item.price:
+            # Deduct balance and decrease item quantity
             user.balance -= item.price
             item.quantity -= 1
 
-            # Flush ensures all pending changes are written before querying
-            
+            # Make sure these changes are flushed to the session
+            session.flush()
 
+            # Add or update inventory entry
             entry = session.query(InventoryEntry).filter_by(user_id=user_id, item_id=item_id).first()
             if entry:
                 entry.quantity += 1
             else:
                 session.add(InventoryEntry(user_id=user_id, item_id=item_id, quantity=1))
-            session.flush()
+
+            # Commit everything
             session.commit()
     except Exception as e:
         session.rollback()
@@ -74,20 +77,26 @@ def buy_item(user_id, item_id):
 
 def sell_item(user_id, item_id):
     session = Session()
-    user = session.query(User).get(user_id)
-    item = session.query(Item).get(item_id)
+    try:
+        user = session.query(User).get(user_id)
+        item = session.query(Item).get(item_id)
 
-    entry = session.query(InventoryEntry).filter_by(user_id=user_id, item_id=item_id).first()
-    if entry and entry.quantity > 0:
-        entry.quantity -= 1
-        user.balance += item.price
-        item.quantity += 1
+        entry = session.query(InventoryEntry).filter_by(user_id=user_id, item_id=item_id).first()
+        if entry and entry.quantity > 0:
+            entry.quantity -= 1
+            user.balance += item.price
+            item.quantity += 1
 
-        if entry.quantity == 0:
-            session.delete(entry)
+            if entry.quantity == 0:
+                session.delete(entry)
 
-        session.commit()
-    session.close()
+            session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
 
 def get_user_items(user_id):
     session = Session()
