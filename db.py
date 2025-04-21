@@ -48,8 +48,12 @@ def create_item(name, price, quantity):
 
 def buy_item(user_id, item_id):
     session = Session()
-    user = session.query(User).get(user_id)
+    user = session.query(User).filter_by(id=user_id).first()
     item = session.query(Item).get(item_id)
+
+    if not user or not item:
+        session.close()
+        return
 
     if item.quantity > 0 and user.balance >= item.price:
         user.balance -= item.price
@@ -62,12 +66,18 @@ def buy_item(user_id, item_id):
             session.add(InventoryEntry(user_id=user_id, item_id=item_id, quantity=1))
 
         session.commit()
+        session.refresh(user)  # Important if checking balance after purchase
+
     session.close()
 
 def sell_item(user_id, item_id):
     session = Session()
-    user = session.query(User).get(user_id)
+    user = session.query(User).filter_by(id=user_id).first()
     item = session.query(Item).get(item_id)
+
+    if not user or not item:
+        session.close()
+        return
 
     entry = session.query(InventoryEntry).filter_by(user_id=user_id, item_id=item_id).first()
     if entry and entry.quantity > 0:
@@ -79,7 +89,10 @@ def sell_item(user_id, item_id):
             session.delete(entry)
 
         session.commit()
+        session.refresh(user)  # Ensure updated balance is immediately accessible
+
     session.close()
+
 
 def get_user_items(user_id):
     session = Session()
