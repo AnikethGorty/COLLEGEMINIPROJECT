@@ -67,6 +67,8 @@ def buy_item(user_id, item_id):
 
         session.commit()
         session.refresh(user)  # Important if checking balance after purchase
+        print(f"User balance after buying: {user.balance}")
+
 
     session.close()
 
@@ -90,6 +92,8 @@ def sell_item(user_id, item_id):
 
         session.commit()
         session.refresh(user)  # Ensure updated balance is immediately accessible
+        print(f"User balance after selling: {user.balance}")
+
 
     session.close()
 
