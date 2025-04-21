@@ -62,6 +62,8 @@ def buy_item(user_id, item_id):
         entry = session.query(InventoryEntry).filter_by(user_id=user_id, item_id=item_id).first()
         if entry:
             entry.quantity += 1
+            user.balance-=item.price
+            item.quantity-=1
         else:
             session.add(InventoryEntry(user_id=user_id, item_id=item_id, quantity=1))
 
