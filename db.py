@@ -1,6 +1,6 @@
 from models import Base, User, Item, InventoryEntry
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker,joinedload
+from sqlalchemy.orm import sessionmaker, joinedload
 
 engine = create_engine("sqlite:///tradezone.db")
 Base.metadata.create_all(engine)
@@ -48,40 +48,34 @@ def create_item(name, price, quantity):
 
 def buy_item(user_id, item_id):
     session = Session()
-    user = session.query(User).filter_by(id=user_id).first()
-    item = session.query(Item).get(item_id)
+    try:
+        user = session.query(User).get(user_id)
+        item = session.query(Item).get(item_id)
 
-    if not user or not item:
+        if item and user and item.quantity > 0 and user.balance >= item.price:
+            user.balance -= item.price
+            item.quantity -= 1
+
+            # Flush ensures all pending changes are written before querying
+            session.flush()
+
+            entry = session.query(InventoryEntry).filter_by(user_id=user_id, item_id=item_id).first()
+            if entry:
+                entry.quantity += 1
+            else:
+                session.add(InventoryEntry(user_id=user_id, item_id=item_id, quantity=1))
+
+            session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
         session.close()
-        return
-
-    if item.quantity > 0 and user.balance >= item.price:
-        user.balance -= item.price
-        item.quantity -= 1
-
-        entry = session.query(InventoryEntry).filter_by(user_id=user_id, item_id=item_id).first()
-        if entry:
-            entry.quantity += 1
-            user.balance-=item.price
-            item.quantity-=1
-        else:
-            session.add(InventoryEntry(user_id=user_id, item_id=item_id, quantity=1))
-
-        session.commit()
-        session.refresh(user)  # Important if checking balance after purchase
-        print(f"User balance after buying: {user.balance}")
-
-
-    session.close()
 
 def sell_item(user_id, item_id):
     session = Session()
-    user = session.query(User).filter_by(id=user_id).first()
+    user = session.query(User).get(user_id)
     item = session.query(Item).get(item_id)
-
-    if not user or not item:
-        session.close()
-        return
 
     entry = session.query(InventoryEntry).filter_by(user_id=user_id, item_id=item_id).first()
     if entry and entry.quantity > 0:
@@ -93,12 +87,7 @@ def sell_item(user_id, item_id):
             session.delete(entry)
 
         session.commit()
-        session.refresh(user)  # Ensure updated balance is immediately accessible
-        print(f"User balance after selling: {user.balance}")
-
-
     session.close()
-
 
 def get_user_items(user_id):
     session = Session()
